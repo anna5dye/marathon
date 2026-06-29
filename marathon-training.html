@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Annalia — Marathon Training</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Marathon">
+<style>
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --text: #1a1a18;
+    --text2: #6b6a65;
+    --text3: #9e9d97;
+    --accent: #2d6a4f;
+    --accent-light: #e8f5ee;
+    --accent-mid: #52b788;
+    --warn: #d4870a;
+    --warn-light: #fef3dc;
+    --red: #c0392b;
+    --red-light: #fdecea;
+    --border: rgba(0,0,0,0.08);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141412;
+      --surface: #1e1e1b;
+      --surface2: #252522;
+      --text: #f0efe9;
+      --text2: #9e9d97;
+      --text3: #6b6a65;
+      --accent: #52b788;
+      --accent-light: #1a2e23;
+      --accent-mid: #2d6a4f;
+      --warn: #f4a535;
+      --warn-light: #2a200a;
+      --red: #e05c4b;
+      --red-light: #2a120f;
+      --border: rgba(255,255,255,0.08);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5; min-height: 100vh; }
+  
+  /* Layout */
+  .app { max-width: 480px; margin: 0 auto; padding-bottom: 80px; }
+  
+  /* Header */
+  .header { padding: 20px 20px 0; }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  .header h1 span { color: var(--accent); }
+  .race-badge { background: var(--accent); color: white; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; letter-spacing: 0.03em; white-space: nowrap; }
+  
+  /* Progress bar */
+  .progress-wrap { padding: 0 20px; margin-bottom: 4px; }
+  .progress-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--text3); margin-bottom: 6px; }
+  .progress-track { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.5s ease; }
+  
+  /* Nav */
+  .nav { display: flex; padding: 0 12px; gap: 2px; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-btn { flex-shrink: 0; padding: 12px 12px 10px; font-size: 13px; font-weight: 500; color: var(--text3); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.15s; font-family: var(--font); }
+  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .nav-btn:hover { color: var(--text2); }
+  
+  /* Pages */
+  .page { display: none; padding: 16px 20px; }
+  .page.active { display: block; }
+  
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .card-title { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  
+  /* Metric grid */
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; }
+  .metric-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+  .metric-value { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .metric-value.green { color: var(--accent); }
+  .metric-value.warn { color: var(--warn); }
+  .metric-unit { font-size: 13px; font-weight: 400; color: var(--text2); }
+  
+  /* Badges */
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; }
+  .badge-run { background: var(--accent-light); color: var(--accent); }
+  .badge-lift { background: #edf2fb; color: #2b4fa8; }
+  .badge-oly { background: #f3eeff; color: #6b3fa0; }
+  .badge-easy { background: var(--accent-light); color: var(--accent); }
+  .badge-tempo { background: var(--warn-light); color: var(--warn); }
+  .badge-long { background: var(--red-light); color: var(--red); }
+  .badge-rest { background: var(--surface2); color: var(--text3); }
+  @media (prefers-color-scheme: dark) {
+    .badge-lift { background: #1a2240; color: #7b9ef0; }
+    .badge-oly { background: #231a30; color: #c08ef0; }
+  }
+  
+  /* Day rows */
+  .day-row { display: grid; grid-template-columns: 72px 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); align-items: start; }
+  .day-row:first-child { border-top: none; }
+  .day-label { font-size: 13px; font-weight: 600; color: var(--text2); padding-top: 3px; }
+  .day-label.today-label { color: var(--accent); }
+  .day-date { font-size: 11px; color: var(--text3); font-weight: 400; margin-top: 2px; }
+  .workout-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; }
+  .workout-detail { font-size: 12px; color: var(--text2); line-height: 1.5; }
+  
+  /* Nutrition rows */
+  .nut-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); font-size: 14px; }
+  .nut-row:first-child { border-top: none; }
+  .nut-label { color: var(--text2); }
+  .nut-value { font-weight: 600; }
+  
+  /* Section header */
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .week-nav { display: flex; gap: 8px; align-items: center; }
+  .icon-btn { width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: background 0.1s; }
+  .icon-btn:hover { background: var(--surface2); }
+  
+  /* Phase pill */
+  .phase-pill { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .phase-base { background: var(--accent-light); color: var(--accent); }
+  .phase-build { background: var(--warn-light); color: var(--warn); }
+  .phase-peak { background: var(--red-light); color: var(--red); }
+  .phase-taper { background: #f3eeff; color: #6b3fa0; }
+  @media (prefers-color-scheme: dark) {
+    .phase-taper { background: #231a30; color: #c08ef0; }
+  }
+  
+  /* Table */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th { text-align: left; padding: 6px 8px; color: var(--text3); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
+  .data-table td { padding: 9px 8px; border-bottom: 1px solid var(--border); color: var(--text2); vertical-align: top; }
+  .data-table td:first-child { color: var(--text); font-weight: 600; }
+  .data-table tr:last-child td { border-bottom: none; }
+  
+  /* Check-in form */
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; display: block; }
+  .form-sub { font-size: 12px; color: var(--text3); margin-bottom: 8px; }
+  .form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 14px; font-family: var(--font); outline: none; transition: border-color 0.15s; }
+  .form-input:focus { border-color: var(--accent); }
+  textarea.form-input { resize: vertical; min-height: 80px; }
+  .rating-row { display: flex; gap: 6px; }
+  .rating-btn { flex: 1; padding: 8px 4px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text2); font-size: 13px; font-weight: 500; cursor: pointer; text-align: center; transition: all 0.15s; font-family: var(--font); }
+  .rating-btn.selected { background: var(--accent); color: white; border-color: var(--accent); }
+  .submit-btn { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 600; cursor: pointer; font-family: var(--font); transition: opacity 0.15s; }
+  .submit-btn:hover { opacity: 0.9; }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  
+  /* AI response */
+  .ai-response { background: var(--accent-light); border: 1px solid var(--accent-mid); border-radius: var(--radius); padding: 16px; margin-top: 12px; }
+  .ai-response-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .ai-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .ai-response-title { font-size: 12px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
+  .ai-response-body { font-size: 14px; color: var(--text); line-height: 1.7; white-space: pre-wrap; }
+  
+  /* Loading */
+  .loading { display: flex; align-items: center; gap: 10px; padding: 16px; color: var(--text2); font-size: 14px; }
+  .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  
+  /* Exercise rows */
+  .ex-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 9px 0; border-top: 1px solid var(--border); }
+  .ex-row:first-child { border-top: none; }
+  .ex-name { font-size: 14px; font-weight: 500; }
+  .ex-note { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .ex-sets { font-size: 13px; color: var(--text2); font-weight: 500; white-space: nowrap; margin-left: 12px; text-align: right; }
+  
+  /* 1RM inputs */
+  .rm-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+  .rm-row:first-child { border-top: none; }
+  .rm-label { font-size: 14px; }
+  .rm-input { width: 80px; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2); color: var(--text); font-size: 14px; font-family: var(--font); text-align: right; outline: none; }
+  .rm-input:focus { border-color: var(--accent); }
+  
+  /* Banner */
+  .banner { background: var(--accent-light); border: 1px solid rgba(82,183,136,0.3); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 12px; font-size: 13px; color: var(--accent); font-weight: 500; }
+  
+  /* Log history */
+  .log-item { border-top: 1px solid var(--border); padding: 10px 0; font-size: 13px; }
+  .log-item:first-child { border-top: none; }
+  .log-date { font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .log-summary { color: var(--text2); }
+
+  /* Week select */
+  select { padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 13px; font-family: var(--font); outline: none; cursor: pointer; }
+
+  /* Macro bar */
+  .macro-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 2px; margin: 8px 0; }
+  .macro-seg { height: 100%; border-radius: 3px; }
+
+  /* Note */
+  .note { font-size: 12px; color: var(--text3); line-height: 1.6; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <h1>Annalia's<br><span>Marathon</span></h1>
+        <div style="font-size:13px;color:var(--text3);margin-top:4px">Oct 18 · <span id="days-out"></span> days out</div>
+      </div>
+      <div style="text-align:right">
+        <div class="race-badge">Week <span id="week-num"></span> of 16</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:6px" id="phase-label"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-labels">
+      <span>Jun 29</span>
+      <span id="progress-pct"></span>
+      <span>Oct 18</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-btn active" onclick="showPage('today',this)">Today</button>
+    <button class="nav-btn" onclick="showPage('week',this)">Week</button>
+    <button class="nav-btn" onclick="showPage('checkin',this)">Check-in</button>
+    <button class="nav-btn" onclick="showPage('nutrition',this)">Nutrition</button>
+    <button class="nav-btn" onclick="showPage('runs',this)">Runs</button>
+    <button class="nav-btn" onclick="showPage('strength',this)">Strength</button>
+    <button class="nav-btn" onclick="showPage('log',this)">Log</button>
+  </nav>
+
+  <!-- TODAY -->
+  <div id="page-today" class="page active">
+    <div class="banner" id="today-banner"></div>
+    <div class="metric-grid" id="today-metrics"></div>
+    <div class="card" id="today-workout"></div>
+    <div class="card" id="today-nutrition-card"></div>
+    <div id="latest-adaptation"></div>
+  </div>
+
+  <!-- WEEK -->
+  <div id="page-week" class="page">
+    <div class="section-header" style="margin-bottom:12px">
+      <div class="week-nav">
+        <button class="icon-btn" onclick="changeWeek(-1)">‹</button>
+        <span id="week-label" style="font-size:13px;font-weight:600;min-width:90px;text-align:center"></span>
+        <button class="icon-btn" onclick="changeWeek(1)">›</button>
+      </div>
+      <span id="week-phase-pill"></span>
+    </div>
+    <div class="card" id="week-view"></div>
+    <div class="card" id="week-nutrition"></div>
+  </div>
+
+  <!-- CHECK-IN -->
+  <div id="page-checkin" class="page">
+    <div class="card">
+      <div class="card-title">Weekly check-in</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">Tell me how your week went and I'll adapt next week's plan — distances, intensity, and nutrition — to match where you actually are.</p>
+      
+      <div class="form-group">
+        <label class="form-label">Long run this week</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><div class="form-sub">Distance (miles)</div><input class="form-input" type="number" id="ci-miles" placeholder="13.1" step="0.1"></div>
+          <div><div class="form-sub">Avg pace (min/mi)</div><input class="form-input" type="text" id="ci-pace" placeholder="10:20"></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">How did the long run feel?</label>
+        <div class="rating-row">
+          <button class="rating-btn" data-group="run-feel" data-val="1" onclick="selectRating(this)">Very hard</button>
+          <button class="rating-btn" data-group="run-feel" data-val="2" onclick="selectRating(this)">Hard</button>
+          <button class="rating-btn" data-group="run-feel" data-val="3" onclick="selectRating(this)">Good</button>
+          <button class="rating-btn" data-group="run-feel" data-val="4" onclick="selectRating(this)">Easy</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Calf / injury status</label>
+        <div class="rating-row">
+          <button class="rating-btn" data-group="calf" data-val="1" onclick="selectRating(this)">Pain</button>
+          <button class="rating-btn" data-group="calf" data-val="2" onclick="selectRating(this)">Tight</button>
+          <button class="rating-btn" data-group="calf" data-val="3" onclick="selectRating(this)">Minor</button>
+          <button class="rating-btn" data-group="calf" data-val="4" onclick="selectRating(this)">100%</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Energy & recovery this week</label>
+        <div class="rating-row">
+          <button class="rating-btn" data-group="energy" data-val="1" onclick="selectRating(this)">Exhausted</button>
+          <button class="rating-btn" data-group="energy" data-val="2" onclick="selectRating(this)">Low</button>
+          <button class="rating-btn" data-group="energy" data-val="3" onclick="selectRating(this)">Good</button>
+          <button class="rating-btn" data-group="energy" data-val="4" onclick="selectRating(this)">Great</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Sleep quality</label>
+        <div class="rating-row">
+          <button class="rating-btn" data-group="sleep" data-val="1" onclick="selectRating(this)">Poor</button>
+          <button class="rating-btn" data-group="sleep" data-val="2" onclick="selectRating(this)">OK</button>
+          <button class="rating-btn" data-group="sleep" data-val="3" onclick="selectRating(this)">Good</button>
+          <button class="rating-btn" data-group="sleep" data-val="4" onclick="selectRating(this)">Great</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Did your cycle return?</label>
+        <div class="rating-row">
+          <button class="rating-btn" data-group="cycle" data-val="yes" onclick="selectRating(this)">Yes!</button>
+          <button class="rating-btn" data-group="cycle" data-val="no" onclick="selectRating(this)">Not yet</button>
+          <button class="rating-btn" data-group="cycle" data-val="skip" onclick="selectRating(this)">Skip</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Anything else to tell me?</label>
+        <div class="form-sub">Missed workouts, stress, travel, nutrition struggles, wins — anything</div>
+        <textarea class="form-input" id="ci-notes" placeholder="e.g. Missed Wednesday lift, felt strong on tempo, cravings were high this week..."></textarea>
+      </div>
+
+      <button class="submit-btn" id="checkin-btn" onclick="submitCheckin()">Adapt my plan ↗</button>
+    </div>
+    <div id="checkin-response"></div>
+  </div>
+
+  <!-- NUTRITION -->
+  <div id="page-nutrition" class="page">
+    <div class="metric-grid">
+      <div class="metric"><div class="metric-label">Maintenance</div><div class="metric-value">2,400 <span class="metric-unit">kcal</span></div></div>
+      <div class="metric"><div class="metric-label">Daily target</div><div class="metric-value green">2,200 <span class="metric-unit">kcal</span></div></div>
+      <div class="metric"><div class="metric-label">Weekly deficit</div><div class="metric-value warn">~1,400 <span class="metric-unit">kcal</span></div></div>
+      <div class="metric"><div class="metric-label">Protein daily</div><div class="metric-value green">150 <span class="metric-unit">g</span></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Calories by day type</div>
+      <div class="nut-row"><span class="nut-label">Rest (Sunday)</span><span class="nut-value">2,000 kcal</span></div>
+      <div class="nut-row"><span class="nut-label">Easy run + lift (Mon)</span><span class="nut-value">2,150 kcal</span></div>
+      <div class="nut-row"><span class="nut-label">Tempo + lift (Tue)</span><span class="nut-value">2,200 kcal</span></div>
+      <div class="nut-row"><span class="nut-label">Full body lift (Wed)</span><span class="nut-value">2,150 kcal</span></div>
+      <div class="nut-row"><span class="nut-label">Easy run (Thu)</span><span class="nut-value">2,150 kcal</span></div>
+      <div class="nut-row"><span class="nut-label">OLY / CrossFit (Fri)</span><span class="nut-value">2,250 kcal</span></div>
+      <div class="nut-row"><span class="nut-label" style="font-weight:600">Long run (Sat) 🔑</span><span class="nut-value" style="color:var(--red)">2,400–2,600 kcal</span></div>
+      <div class="note">Long run day — eat at or above maintenance. Underfueling long runs hurts performance, recovery, and hormonal health more than any small surplus.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Base macros (training day — 2,200 kcal)</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;text-align:center">
+        <div><div style="font-size:20px;font-weight:700;color:#2a78d6">150g</div><div style="font-size:11px;color:var(--text3)">Protein · 27%</div></div>
+        <div><div style="font-size:20px;font-weight:700;color:var(--warn)">247g</div><div style="font-size:11px;color:var(--text3)">Carbs · 45%</div></div>
+        <div><div style="font-size:20px;font-weight:700;color:var(--accent)">76g</div><div style="font-size:11px;color:var(--text3)">Fat · 31%</div></div>
+      </div>
+      <div class="macro-bar">
+        <div class="macro-seg" style="flex:2.7;background:#2a78d6"></div>
+        <div class="macro-seg" style="flex:4.5;background:var(--warn)"></div>
+        <div class="macro-seg" style="flex:2.8;background:var(--accent)"></div>
+      </div>
+      <div class="note">Protein stays constant all days. Adjust carbs up/down to hit daily calorie target. Fat stays roughly fixed.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Run fueling</div>
+      <div class="nut-row"><span class="nut-label">2 hrs before long run</span><span class="nut-value" style="font-size:13px">60–80g carbs + protein</span></div>
+      <div class="nut-row"><span class="nut-label">During run >75 min</span><span class="nut-value" style="font-size:13px;color:var(--accent)">30–60g carbs/hr</span></div>
+      <div class="nut-row"><span class="nut-label">Within 30 min post-run</span><span class="nut-value" style="font-size:13px">40–60g carbs + 25g protein</span></div>
+      <div class="nut-row"><span class="nut-label">Tempo run</span><span class="nut-value" style="font-size:13px;color:var(--text3)">No mid-run fuel needed</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Hormonal health</div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.7">Your cycle has been absent ~3 months — a sign of relative energy deficiency (RED-S). The ~200 kcal deficit keeps weight slowly moving while protecting hormonal function. <strong>Never go below 2,000 kcal on any day.</strong> If your cycle doesn't return within 6–8 weeks, speak with your doctor. Trust MacroFactor when it bumps your targets — that means your TDEE is recalibrating correctly as training load increases.</p>
+    </div>
+  </div>
+
+  <!-- RUNS -->
+  <div id="page-runs" class="page">
+    <div class="card">
+      <div class="card-title">Your fitness baseline</div>
+      <div class="nut-row"><span class="nut-label">Long run PR</span><span class="nut-value">13.1 mi</span></div>
+      <div class="nut-row"><span class="nut-label">Current long run pace</span><span class="nut-value">10:20 /mi</span></div>
+      <div class="nut-row"><span class="nut-label">Easy / Zone 2 pace</span><span class="nut-value green">11:00–12:00 /mi</span></div>
+      <div class="nut-row"><span class="nut-label">Tempo pace</span><span class="nut-value warn">9:30–10:00 /mi</span></div>
+      <div class="note">Your 13-mile run in Zone 3 shows strong aerobic fitness. Easy runs should feel embarrassingly slow — that's correct and necessary for 16 weeks of training.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Long run progression (Saturdays)</div>
+      <table class="data-table">
+        <thead><tr><th>Wk</th><th>Date</th><th>Miles</th><th>Notes</th></tr></thead>
+        <tbody id="long-run-table"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">Thursday easy run progression</div>
+      <table class="data-table">
+        <thead><tr><th>Wk</th><th>Miles</th><th>Pace</th></tr></thead>
+        <tbody id="thu-run-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- STRENGTH -->
+  <div id="page-strength" class="page">
+    <div class="card">
+      <div class="card-title">Enter your 1RMs</div>
+      <div id="rm-inputs"></div>
+      <div class="note">Used to calculate working weights each week. Leave blank to work by RPE feel.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Monday — lower body + easy run</div>
+      <div id="lower-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Tuesday — upper body + tempo run</div>
+      <div id="upper-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Wednesday — full body</div>
+      <div id="full-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Core — add 3x per week</div>
+      <div id="core-list"></div>
+    </div>
+  </div>
+
+  <!-- LOG -->
+  <div id="page-log" class="page">
+    <div class="card">
+      <div class="card-title">Check-in history</div>
+      <div id="log-list"><p style="color:var(--text3);font-size:13px">No check-ins yet. Complete your first weekly check-in to see your adaptation history here.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const START = new Date('2026-06-29');
+const RACE = new Date('2026-10-18');
+const TOTAL_WEEKS = 16;
+
+const PHASES = [
+  {weeks:[1,2,3,4], name:'Base building', cls:'phase-base'},
+  {weeks:[5,6,7,8,9,10], name:'Build', cls:'phase-build'},
+  {weeks:[11,12,13,14], name:'Peak', cls:'phase-peak'},
+  {weeks:[15,16], name:'Taper', cls:'phase-taper'}
+];
+
+const LONG_RUNS = [
+  {wk:1,mi:13,note:'Confirm calf healed, aerobic base'},
+  {wk:2,mi:14,note:'Stay Zone 2 entire run'},
+  {wk:3,mi:15,note:'First big milestone'},
+  {wk:4,mi:12,note:'Recovery week — pull back 20%'},
+  {wk:5,mi:16,note:'Build phase begins'},
+  {wk:6,mi:17,note:'Practice mid-run fueling'},
+  {wk:7,mi:18,note:'Fuel every 45 min — gels or dates'},
+  {wk:8,mi:14,note:'Recovery week'},
+  {wk:9,mi:19,note:'Peak build — longest effort yet'},
+  {wk:10,mi:20,note:'First 20-miler — race simulation'},
+  {wk:11,mi:18,note:'Keep intensity, slight pullback'},
+  {wk:12,mi:20,note:'Final 20-miler — confidence run'},
+  {wk:13,mi:16,note:'Taper begins — feel fresh'},
+  {wk:14,mi:13,note:'Race pace miles in the middle'},
+  {wk:15,mi:10,note:'Short and sharp — stay fresh'},
+  {wk:16,mi:0,note:'RACE DAY — Oct 18 🎉'}
+];
+
+const THU_RUNS = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16].map((wk,i)=>{
+  const miles = [5,5,6,5,6,7,7,6,7,8,7,8,6,5,4,3][i];
+  return {wk, miles};
+});
+
+const DAYS = [
+  {short:'Mon',long:'Monday',workouts:['Lower body','Easy run'],tags:['badge-lift','badge-easy'],
+    detail:(w)=>`Lower body strength (45 min) + Easy run ${getMonMi(w)} mi @ 11:00–12:00/mi · Zone 2`},
+  {short:'Tue',long:'Tuesday',workouts:['Upper body','Tempo run'],tags:['badge-lift','badge-tempo'],
+    detail:(w)=>`Upper body strength (45 min) + Tempo ${getTempoDist(w)} mi — 1 mi warm-up · ${getTempoDist(w)-2} mi @ 9:30–10:00/mi · 1 mi cool-down`},
+  {short:'Wed',long:'Wednesday',workouts:['Full body lift'],tags:['badge-lift'],
+    detail:(w)=>`Full body compound lift (50–60 min) — heavier loading, higher volume`},
+  {short:'Thu',long:'Thursday',workouts:['Longer easy run'],tags:['badge-easy'],
+    detail:(w)=>`Aerobic base run ${getThuMi(w)} mi @ 11:00–12:00/mi · Zone 2 — your second most important run`},
+  {short:'Fri',long:'Friday',workouts:['Olympic lifting','CrossFit'],tags:['badge-oly','badge-lift'],
+    detail:(w)=>`Your OLY program + CrossFit — keep intensity moderate, stay fresh for Saturday long run`},
+  {short:'Sat',long:'Saturday',workouts:['Long run'],tags:['badge-long'],
+    detail:(w)=>{
+      const lr = LONG_RUNS[w-1];
+      if(lr.mi===0) return 'RACE DAY — 26.2 miles · Oct 18, 2026 🎉';
+      return `Long run ${lr.mi} mi — start Zone 2, fuel after 60 min, finish strong · ${lr.note}`;
+    }},
+  {short:'Sun',long:'Sunday',workouts:['Rest'],tags:['badge-rest'],
+    detail:(w)=>`Full rest — prioritize sleep, eat well, let the week's work absorb`}
+];
+
+function getMonMi(w){return w<=4?3:w<=8?4:w<=12?5:4;}
+function getTempoDist(w){return w<=4?4:w<=8?5:w<=12?6:5;}
+function getThuMi(w){return THU_RUNS[w-1]?.miles||5;}
+
+function getDaysOut(){
+  return Math.max(0, Math.ceil((RACE - new Date())/(1000*60*60*24)));
+}
+function getWeekNum(){
+  const diff = new Date()-START;
+  return Math.min(Math.max(1, Math.floor(diff/(1000*60*60*24*7))+1), TOTAL_WEEKS);
+}
+function getPhase(wk){
+  return PHASES.find(p=>p.weeks.includes(wk))||PHASES[0];
+}
+function getWeekStart(wk){
+  const d = new Date(START);
+  d.setDate(d.getDate()+(wk-1)*7);
+  return d;
+}
+function fmt(d){return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
+function todayDayIdx(){
+  const d = new Date().getDay();
+  return d===0?6:d-1;
+}
+
+function getNutrition(dayIdx){
+  const map = {
+    0:{cal:'2,150',carbs:'235g',note:''},
+    1:{cal:'2,200',carbs:'250g',note:''},
+    2:{cal:'2,150',carbs:'235g',note:''},
+    3:{cal:'2,150',carbs:'235g',note:''},
+    4:{cal:'2,250',carbs:'260g',note:''},
+    5:{cal:'2,400–2,600',carbs:'280–320g',note:'Long run day — eat at maintenance. Fuel during run: 30–60g carbs/hr after hour 1.'},
+    6:{cal:'2,000',carbs:'185g',note:'Rest day — lower carbs is fine, keep protein at 150g.'}
+  };
+  return map[dayIdx]||map[0];
+}
+
+let viewWeek;
+
+function init(){
+  const wk = getWeekNum();
+  viewWeek = wk;
+  const phase = getPhase(wk);
+  const pct = Math.round(((wk-1)/TOTAL_WEEKS)*100);
+
+  document.getElementById('days-out').textContent = getDaysOut();
+  document.getElementById('week-num').textContent = wk;
+  document.getElementById('phase-label').textContent = phase.name;
+  document.getElementById('progress-fill').style.width = pct+'%';
+  document.getElementById('progress-pct').textContent = pct+'% complete';
+
+  renderToday(wk);
+  renderWeekView(wk);
+  renderLongRunTable();
+  renderThuRunTable();
+  renderStrength();
+  renderLog();
+  loadLatestAdaptation();
+}
+
+function renderToday(wk){
+  const dayIdx = todayDayIdx();
+  const day = DAYS[dayIdx];
+  const phase = getPhase(wk);
+  const nut = getNutrition(dayIdx);
+
+  document.getElementById('today-banner').textContent =
+    day.long + ' · Week ' + wk + ' · ' + phase.name + ' phase';
+
+  const lr = LONG_RUNS[wk-1];
+  document.getElementById('today-metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">Today</div><div class="metric-value" style="font-size:16px">${day.long}</div></div>
+    <div class="metric"><div class="metric-label">Days to race</div><div class="metric-value ${getDaysOut()<30?'warn':'green'}">${getDaysOut()}</div></div>
+    <div class="metric"><div class="metric-label">Long run this week</div><div class="metric-value green">${lr.mi===0?'RACE':lr.mi+' mi'}</div></div>
+    <div class="metric"><div class="metric-label">Today's calories</div><div class="metric-value" style="font-size:16px">${nut.cal}</div></div>
+  `;
+
+  document.getElementById('today-workout').innerHTML = `
+    <div class="card-title">Today's workout</div>
+    <div class="workout-tags">${day.workouts.map((w,i)=>`<span class="badge ${day.tags[i]||'badge-rest'}">${w}</span>`).join('')}</div>
+    <div class="workout-detail" style="margin-top:8px">${day.detail(wk)}</div>
+  `;
+
+  document.getElementById('today-nutrition-card').innerHTML = `
+    <div class="card-title">Today's nutrition</div>
+    <div class="nut-row"><span class="nut-label">Calories</span><span class="nut-value" style="color:var(--accent)">${nut.cal} kcal</span></div>
+    <div class="nut-row"><span class="nut-label">Protein</span><span class="nut-value">150g</span></div>
+    <div class="nut-row"><span class="nut-label">Carbs</span><span class="nut-value">${nut.carbs}</span></div>
+    <div class="nut-row"><span class="nut-label">Fat</span><span class="nut-value">~76g</span></div>
+    ${nut.note?`<div class="note">${nut.note}</div>`:''}
+  `;
+}
+
+function renderWeekView(wk){
+  viewWeek = wk;
+  const phase = getPhase(wk);
+  const startD = getWeekStart(wk);
+  const endD = new Date(startD); endD.setDate(endD.getDate()+6);
+
+  document.getElementById('week-label').textContent = 'Wk '+wk+' · '+fmt(startD);
+  document.getElementById('week-phase-pill').innerHTML =
+    `<span class="phase-pill ${phase.cls}">${phase.name}</span>`;
+
+  let html = '';
+  DAYS.forEach((day,i)=>{
+    const d = new Date(startD); d.setDate(d.getDate()+i);
+    const isToday = d.toDateString()===new Date().toDateString();
+    html += `<div class="day-row">
+      <div><div class="day-label ${isToday?'today-label':''}">${day.short}</div><div class="day-date">${fmt(d)}</div></div>
+      <div><div class="workout-tags">${day.workouts.map((w,j)=>`<span class="badge ${day.tags[j]||'badge-rest'}">${w}</span>`).join('')}</div>
+      <div class="workout-detail">${day.detail(wk)}</div></div>
+    </div>`;
+  });
+
+  document.getElementById('week-view').innerHTML = html;
+  document.getElementById('week-nutrition').innerHTML = `
+    <div class="card-title">This week's nutrition</div>
+    <div class="nut-row"><span class="nut-label">Mon (lower + easy)</span><span class="nut-value">2,150 kcal</span></div>
+    <div class="nut-row"><span class="nut-label">Tue (upper + tempo)</span><span class="nut-value">2,200 kcal</span></div>
+    <div class="nut-row"><span class="nut-label">Wed (full body)</span><span class="nut-value">2,150 kcal</span></div>
+    <div class="nut-row"><span class="nut-label">Thu (easy run)</span><span class="nut-value">2,150 kcal</span></div>
+    <div class="nut-row"><span class="nut-label">Fri (OLY/CrossFit)</span><span class="nut-value">2,250 kcal</span></div>
+    <div class="nut-row"><span class="nut-label">Sat (long run ${LONG_RUNS[wk-1]?.mi||0} mi)</span><span class="nut-value" style="color:var(--red)">${LONG_RUNS[wk-1]?.mi>=18?'2,500–2,600':'2,400'} kcal</span></div>
+    <div class="nut-row"><span class="nut-label">Sun (rest)</span><span class="nut-value">2,000 kcal</span></div>
+    <div class="nut-row" style="font-weight:600;border-top:2px solid var(--border);padding-top:10px"><span class="nut-label">Weekly avg</span><span class="nut-value">~2,186 kcal</span></div>
+  `;
+}
+
+function changeWeek(delta){
+  viewWeek = Math.min(Math.max(1,(viewWeek||getWeekNum())+delta),TOTAL_WEEKS);
+  renderWeekView(viewWeek);
+}
+
+function renderLongRunTable(){
+  document.getElementById('long-run-table').innerHTML = LONG_RUNS.map(r=>{
+    const d = getWeekStart(r.wk); d.setDate(d.getDate()+5);
+    return `<tr>
+      <td>W${r.wk}</td>
+      <td>${r.mi===0?'Oct 18':fmt(d)}</td>
+      <td>${r.mi===0?'26.2 mi 🎉':r.mi+' mi'}</td>
+      <td style="font-size:12px">${r.note}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderThuRunTable(){
+  document.getElementById('thu-run-table').innerHTML = THU_RUNS.map(r=>`
+    <tr>
+      <td>W${r.wk}</td>
+      <td>${r.miles} mi</td>
+      <td style="color:var(--text3)">${r.wk>=13?'Easy / shakeout':'11:00–12:00/mi'}</td>
+    </tr>`).join('');
+}
+
+const LIFTS_1RM = [
+  {id:'squat',label:'Back squat'},
+  {id:'rdl',label:'Romanian deadlift'},
+  {id:'bench',label:'Bench press'},
+  {id:'row',label:'Barbell row'},
+  {id:'ohp',label:'Overhead press'},
+  {id:'hip',label:'Hip thrust'}
+];
+const LOWER = [
+  {name:'Back squat',sets:'4 × 6–8',note:'65–75% 1RM'},
+  {name:'Romanian deadlift',sets:'3 × 8–10',note:'Controlled eccentric — hamstring focus'},
+  {name:'Bulgarian split squat',sets:'3 × 10 each',note:'RPE 7–8 — single leg strength'},
+  {name:'Hip thrust',sets:'3 × 12',note:'Heavy — glute activation'},
+  {name:'Nordic curl or ham curl',sets:'3 × 8',note:'Injury prevention — non-negotiable'},
+  {name:'Calf raises (seated + standing)',sets:'3 × 15–20',note:'Run durability — both variations'}
+];
+const UPPER = [
+  {name:'Bench press',sets:'4 × 6–8',note:'65–75% 1RM'},
+  {name:'Barbell row',sets:'4 × 8',note:'Heavy pull — back thickness'},
+  {name:'Overhead press',sets:'3 × 8–10',note:'Shoulder health and stability'},
+  {name:'Pull-ups or lat pulldown',sets:'3 × 8–10',note:'Back width'},
+  {name:'Dumbbell lateral raise',sets:'3 × 15',note:'Shoulder stability'},
+  {name:'Face pulls',sets:'3 × 15',note:'Rotator cuff — always include'}
+];
+const FULL = [
+  {name:'Trap bar deadlift',sets:'4 × 5',note:'75–80% 1RM — power focus'},
+  {name:'Goblet squat',sets:'3 × 12',note:'Moderate weight — movement quality'},
+  {name:'Push-up variations',sets:'3 × 15–20',note:'Bodyweight or weighted vest'},
+  {name:'Single arm dumbbell row',sets:'3 × 10 each',note:'Unilateral pulling'},
+  {name:'Reverse lunge',sets:'3 × 10 each',note:'Hip stability for running'},
+  {name:'Band pull-aparts',sets:'3 × 20',note:'Upper back posture'}
+];
+const CORE = [
+  {name:'Dead bug',sets:'3 × 10 each side',note:'Spine stability — slow and controlled'},
+  {name:'Pallof press',sets:'3 × 12 each',note:'Anti-rotation — running posture'},
+  {name:'Copenhagen plank',sets:'3 × 20–30 sec each',note:'Adductor strength — injury prevention'},
+  {name:'Weighted carry',sets:'3 × 30m each',note:'Suitcase or farmer — full body stability'}
+];
+
+function renderStrength(){
+  document.getElementById('rm-inputs').innerHTML = LIFTS_1RM.map(l=>`
+    <div class="rm-row">
+      <span class="rm-label">${l.label}</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input class="rm-input" type="number" id="rm-${l.id}" placeholder="lbs" min="0"
+          value="${localStorage.getItem('rm-'+l.id)||''}"
+          onchange="localStorage.setItem('rm-${l.id}',this.value)">
+        <span style="font-size:12px;color:var(--text3)">lbs</span>
+      </div>
+    </div>`).join('');
+
+  const exHtml = (list) => list.map(e=>`
+    <div class="ex-row">
+      <div><div class="ex-name">${e.name}</div><div class="ex-note">${e.note}</div></div>
+      <div class="ex-sets">${e.sets}</div>
+    </div>`).join('');
+
+  document.getElementById('lower-list').innerHTML = exHtml(LOWER);
+  document.getElementById('upper-list').innerHTML = exHtml(UPPER);
+  document.getElementById('full-list').innerHTML = exHtml(FULL);
+  document.getElementById('core-list').innerHTML = exHtml(CORE);
+}
+
+// Rating buttons
+const ratings = {};
+function selectRating(btn){
+  const group = btn.dataset.group;
+  ratings[group] = btn.dataset.val;
+  document.querySelectorAll(`[data-group="${group}"]`).forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+async function submitCheckin(){
+  const btn = document.getElementById('checkin-btn');
+  const miles = document.getElementById('ci-miles').value;
+  const pace = document.getElementById('ci-pace').value;
+  const notes = document.getElementById('ci-notes').value;
+  const wk = getWeekNum();
+  const phase = getPhase(wk);
+
+  const runFeel = ratings['run-feel'];
+  const calf = ratings['calf'];
+  const energy = ratings['energy'];
+  const sleep = ratings['sleep'];
+  const cycle = ratings['cycle'];
+
+  if(!miles && !runFeel && !notes){
+    alert('Please fill in at least your long run distance and how it felt.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Analyzing...';
+
+  const responseDiv = document.getElementById('checkin-response');
+  responseDiv.innerHTML = `<div class="card"><div class="loading"><div class="spinner"></div>Adapting your plan based on this week's data...</div></div>`;
+
+  const prompt = `You are a professional running coach and sports nutritionist. You're coaching Annalia, a 21-year-old female nursing student training for her first marathon on October 18, 2026. She is currently in Week ${wk} of 16 (${phase.name} phase).
+
+Her profile:
+- Height: 5'6", weight ~153–155 lbs, body fat ~21.7%
+- Skeletal muscle mass: 69.7 lbs (strong for her size)
+- BMR: 1573 kcal, maintenance: ~2,400 kcal
+- Current plan: ~200 kcal/day deficit (~2,200 kcal average)
+- Long run PR before this plan: 13.1 miles at 10:20/mi (Zone 3)
+- Weekly structure: Mon lower+easy run, Tue upper+tempo, Wed full body, Thu longer easy run, Fri OLY/CrossFit, Sat long run, Sun rest
+- Health concern: menstrual cycle absent ~3 months (RED-S risk)
+- History of binge/purge eating disorder — now recovered, healthy mindset
+- Recent calf strain — improving
+
+This week's check-in data:
+- Long run: ${miles||'not reported'} miles at ${pace||'pace not given'}/mi
+- Long run feel: ${runFeel==='1'?'Very hard':runFeel==='2'?'Hard':runFeel==='3'?'Good':runFeel==='4'?'Easy':'not rated'}
+- Calf/injury status: ${calf==='1'?'Pain present':calf==='2'?'Tight':calf==='3'?'Minor discomfort':calf==='4'?'100% healthy':'not reported'}
+- Energy & recovery: ${energy==='1'?'Exhausted':energy==='2'?'Low':energy==='3'?'Good':energy==='4'?'Great':'not rated'}
+- Sleep quality: ${sleep==='1'?'Poor':sleep==='2'?'OK':sleep==='3'?'Good':sleep==='4'?'Great':'not rated'}
+- Menstrual cycle returned: ${cycle==='yes'?'Yes!':cycle==='no'?'Not yet':cycle==='skip'?'Skipped':'not answered'}
+- Additional notes: ${notes||'none'}
+
+Next week is Week ${Math.min(wk+1,16)} (${getPhase(Math.min(wk+1,16)).name} phase). The planned long run for next week is ${LONG_RUNS[Math.min(wk,15)]?.mi||0} miles.
+
+Based on this data, provide:
+1. A 2-3 sentence assessment of how this week went
+2. Specific adjustments for next week (long run distance, Thursday run distance, intensity guidance) — be concrete with numbers
+3. Nutrition adjustment if needed (keep the deficit mild — hormonal health is priority)
+4. One specific thing to focus on next week
+5. Any injury or health flag if warranted
+
+Keep it warm, direct, evidence-based, and under 250 words. Use Annalia's name. Format with clear sections. Do not use bullet points — write in short paragraphs with bold headers like **Assessment**, **Next week**, **Nutrition**, **Focus**.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{role:'user', content: prompt}]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.map(b=>b.text||'').join('') || 'Unable to get adaptation.';
+
+    // Save to log
+    const logEntry = {
+      date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+      week: wk,
+      miles, pace,
+      runFeel, calf, energy, sleep, cycle, notes,
+      adaptation: text
+    };
+    const log = JSON.parse(localStorage.getItem('checkin-log')||'[]');
+    log.unshift(logEntry);
+    localStorage.setItem('checkin-log', JSON.stringify(log.slice(0,20)));
+    localStorage.setItem('latest-adaptation', text);
+    localStorage.setItem('latest-adaptation-date', logEntry.date);
+
+    responseDiv.innerHTML = `<div class="card"><div class="ai-response-header"><div class="ai-dot"></div><div class="ai-response-title">Your adapted plan</div></div><div class="ai-response-body">${formatResponse(text)}</div></div>`;
+    renderLog();
+    loadLatestAdaptation();
+
+  } catch(err) {
+    responseDiv.innerHTML = `<div class="card"><p style="color:var(--red);font-size:13px">Couldn't reach the AI — check your connection and try again.</p></div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Adapt my plan ↗';
+}
+
+function formatResponse(text){
+  return text
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n\n/g,'</p><p style="margin-top:10px">')
+    .replace(/\n/g,'<br>');
+}
+
+function loadLatestAdaptation(){
+  const text = localStorage.getItem('latest-adaptation');
+  const date = localStorage.getItem('latest-adaptation-date');
+  const el = document.getElementById('latest-adaptation');
+  if(!el) return;
+  if(text){
+    el.innerHTML = `<div class="card"><div class="ai-response-header"><div class="ai-dot"></div><div class="ai-response-title">Latest adaptation · ${date||''}</div></div><div class="ai-response-body">${formatResponse(text)}</div></div>`;
+  }
+}
+
+function renderLog(){
+  const log = JSON.parse(localStorage.getItem('checkin-log')||'[]');
+  const el = document.getElementById('log-list');
+  if(!log.length){
+    el.innerHTML = '<p style="color:var(--text3);font-size:13px">No check-ins yet. Complete your first weekly check-in to see history here.</p>';
+    return;
+  }
+  el.innerHTML = log.map(e=>`
+    <div class="log-item">
+      <div class="log-date">Week ${e.week} · ${e.date}</div>
+      <div class="log-summary">${e.miles?e.miles+' mi @ '+e.pace+'/mi · ':''} ${e.runFeel==='4'?'Felt easy':e.runFeel==='3'?'Felt good':e.runFeel==='2'?'Felt hard':'Very hard'}</div>
+    </div>`).join('');
+}
+
+function showPage(id, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+}
+
+init();
+</script>
+</body>
+</html>
